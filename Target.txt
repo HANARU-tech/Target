@@ -1,0 +1,38 @@
+://vulnweb.com
+://herokuapp.com
+name: Automated Bug Hunter Bot
+
+on:
+  workflow_dispatch: # इसे आप जब चाहें बटन दबाकर चालू कर सकते हैं
+  schedule:
+    - cron: '0 2 * * *' # यह रोज़ सुबह 7:30 AM (IST) अपने आप चलेगा
+
+jobs:
+  recon-and-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Subfinder and Nuclei
+        run: |
+          go install -v ://github.com
+          go install -v ://github.com
+          sudo cp ~/go/bin/* /usr/local/bin/
+
+      - name: Update Nuclei Templates
+        run: nuclei -update-templates
+
+      - name: Find Subdomains & Scan for Bugs
+        run: |
+          subfinder -dL targets.txt -silent -o subdomains.txt
+          cat targets.txt >> subdomains.txt
+          sort -u subdomains.txt -o final_targets.txt
+          nuclei -l final_targets.txt -severity low,medium,high,critical -o bug_report.txt || true
+
+      - name: Upload Bug Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bug-Hunt-Results
+          path: bug_report.txt
+          if-no-files-found: ignore
